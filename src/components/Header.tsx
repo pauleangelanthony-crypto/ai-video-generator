@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "./ui/button";
+import { Github } from "lucide-react";
 
 export function Header() {
   return (
@@ -13,8 +14,14 @@ export function Header() {
         <Button asChild variant="ghost">
           <Link href="/">Home</Link>
         </Button>
-        <Button asChild variant="ghost">
-          <Link href="/about">About</Link>
+        <Button asChild variant="ghost" size="icon">
+          <Link
+            href="https://github.com/jupiter221208/ai-proposal-generator"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Github className="h-5 w-5" />
+          </Link>
         </Button>
       </nav>
     </header>
