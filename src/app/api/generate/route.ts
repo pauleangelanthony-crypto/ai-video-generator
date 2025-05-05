@@ -1,155 +1,49 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-interface StabilityArtifact {
-  base64: string;
-  seed: number;
-  finishReason: string;
-}
-
-interface StabilityResponse {
-  artifacts: StabilityArtifact[];
-}
 
 export async function POST(req: Request) {
   try {
-    const {
-      prompt,
-      negativePrompt,
-      numImages,
-      model,
-      openaiApiKey,
-      stabilityApiKey,
-      googleApiKey,
-    } = await req.json();
+    const { prompt, model, openaiApiKey } = await req.json();
 
-    if (model.startsWith("dall-e")) {
-      if (!openaiApiKey) {
-        return NextResponse.json(
-          { error: "OpenAI API key is required" },
-          { status: 400 }
-        );
-      }
-
-      const openai = new OpenAI({
-        apiKey: openaiApiKey,
-      });
-
-      const fullPrompt = negativePrompt
-        ? `${prompt}. Avoid: ${negativePrompt}`
-        : prompt;
-
-      const response = await openai.images.generate({
-        model: model,
-        prompt: fullPrompt,
-        n: numImages,
-        size: "1024x1024",
-        quality: "standard",
-        style: "natural",
-      });
-
-      return NextResponse.json({ images: response.data });
-    }
-
-    if (model === "stable-diffusion") {
-      if (!stabilityApiKey) {
-        return NextResponse.json(
-          { error: "Stability API key is required" },
-          { status: 400 }
-        );
-      }
-
-      const response = await fetch(
-        "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${stabilityApiKey}`,
-          },
-          body: JSON.stringify({
-            text_prompts: [
-              {
-                text: prompt,
-                weight: 1,
-              },
-              ...(negativePrompt
-                ? [
-                    {
-                      text: negativePrompt,
-                      weight: -1,
-                    },
-                  ]
-                : []),
-            ],
-            cfg_scale: 7,
-            height: 1024,
-            width: 1024,
-            samples: numImages,
-            steps: 30,
-            style_preset: "photographic",
-          }),
-        }
+    if (!openaiApiKey) {
+      return NextResponse.json(
+        { error: "OpenAI API key is required" },
+        { status: 400 }
       );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(
-          error.message || "Failed to generate images with Stable Diffusion"
-        );
-      }
-
-      const result = (await response.json()) as StabilityResponse;
-      const images = result.artifacts.map((artifact) => ({
-        url: `data:image/png;base64,${artifact.base64}`,
-      }));
-
-      return NextResponse.json({ images });
     }
 
-    if (model === "gemini") {
-      if (!googleApiKey) {
-        return NextResponse.json(
-          { error: "Google API key is required" },
-          { status: 400 }
-        );
-      }
+    const openai = new OpenAI({
+      apiKey: openaiApiKey,
+    });
 
-      const genAI = new GoogleGenerativeAI(googleApiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
-
-      const result = await model.generateContent([
-        prompt,
+    const response = await openai.chat.completions.create({
+      model: model,
+      messages: [
         {
-          inlineData: {
-            mimeType: "image/jpeg",
-            data: "", // Empty data as we're generating images
-          },
+          role: "system",
+          content:
+            "You are a professional proposal writer. Write a detailed and well-structured proposal based on the requirements provided.",
         },
-      ]);
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 4000,
+    });
 
-      const response = await result.response;
-      if (!response.candidates?.[0]?.content?.parts?.[0]?.text) {
-        throw new Error("Failed to generate image with Gemini");
-      }
-      const imageData = response.candidates[0].content.parts[0].text;
+    const proposal = response.choices[0]?.message?.content;
 
-      // Convert the generated image data to a URL
-      const imageUrl = `data:image/jpeg;base64,${imageData}`;
-
-      return NextResponse.json({ images: [{ url: imageUrl }] });
+    if (!proposal) {
+      throw new Error("Failed to generate proposal");
     }
 
-    return NextResponse.json(
-      { error: "This model is not implemented yet" },
-      { status: 501 }
-    );
+    return NextResponse.json({ proposal });
   } catch (error) {
-    console.error("Error generating images:", error);
+    console.error("Error generating proposal:", error);
     return NextResponse.json(
-      { error: "Failed to generate images" },
+      { error: "Failed to generate proposal" },
       { status: 500 }
     );
   }

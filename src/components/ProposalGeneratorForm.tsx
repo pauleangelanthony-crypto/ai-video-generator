@@ -25,7 +25,7 @@ interface FormData {
 }
 
 interface GeneratedProposal {
-  content: string;
+  proposal: string;
 }
 
 const MODELS = [
@@ -144,7 +144,8 @@ export function ProposalGeneratorForm() {
 
       setStatus("Processing response...");
       const result = await response.json();
-      setGeneratedProposal(result.proposal);
+      console.log("result======", result);
+      setGeneratedProposal(result);
 
       setStatus("Proposal generated successfully!");
       toast.success("Proposal generated successfully!");
@@ -220,7 +221,7 @@ export function ProposalGeneratorForm() {
         <div className="mt-6">
           <div className="prose max-w-none">
             <pre className="whitespace-pre-wrap">
-              {generatedProposal.content}
+              {generatedProposal.proposal}
             </pre>
           </div>
         </div>
