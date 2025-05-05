@@ -28,6 +28,11 @@ interface GeneratedProposal {
   proposal: string;
 }
 
+interface Message {
+  type: "user" | "assistant";
+  content: string;
+}
+
 const MODELS = [
   { id: "gpt-image-1", name: "GPT Image 1" },
   { id: "gpt-4.1-nano", name: "GPT-4.1 Nano" },
@@ -106,6 +111,7 @@ export function ProposalGeneratorForm() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedProposal, setGeneratedProposal] =
     useState<GeneratedProposal | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<string>("");
   const dispatch = useDispatch();
   const formState = useSelector((state: RootState) => state.form) as FormData;
@@ -125,9 +131,11 @@ export function ProposalGeneratorForm() {
       dispatch(setFormData(data));
       setIsGenerating(true);
       setStatus("Initializing proposal generation...");
-      toast.info(
-        `Generating proposal with ${selectedModel?.name} using prompt: ${data.prompt}`
-      );
+
+      // Add user message to chat
+      setMessages((prev) => [...prev, { type: "user", content: data.prompt }]);
+
+      toast.info(`Generating proposal with ${selectedModel?.name}`);
 
       setStatus("Sending request to AI model...");
       const response = await fetch("/api/generate", {
@@ -144,11 +152,19 @@ export function ProposalGeneratorForm() {
 
       setStatus("Processing response...");
       const result = await response.json();
-      console.log("result======", result);
       setGeneratedProposal(result);
+
+      // Add assistant message to chat
+      setMessages((prev) => [
+        ...prev,
+        { type: "assistant", content: result.proposal },
+      ]);
 
       setStatus("Proposal generated successfully!");
       toast.success("Proposal generated successfully!");
+
+      // Clear the textarea after successful submission
+      form.setValue("prompt", "");
     } catch (error) {
       setStatus("Error generating proposal");
       toast.error("Failed to generate proposal:");
@@ -160,72 +176,92 @@ export function ProposalGeneratorForm() {
 
   return (
     <Card className="p-6">
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">AI Model</label>
-          <Select
-            onValueChange={(value) => {
-              form.setValue("model", value);
-            }}
-            defaultValue={form.getValues("model")}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-              {MODELS.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  {model.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">OpenAI API Key</label>
-          <Input
-            type="password"
-            {...form.register("openaiApiKey", { required: true })}
-            placeholder="Enter your OpenAI API key"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Proposal Requirements</label>
-          <Textarea
-            {...form.register("prompt", { required: true })}
-            placeholder="Describe what you want in your proposal..."
-            className="h-24"
-          />
-        </div>
-
-        <Button type="submit" className="w-full" disabled={isGenerating}>
-          {isGenerating ? "Generating..." : "Generate Proposal"}
-        </Button>
-
-        {isGenerating && (
-          <div className="mt-4 space-y-2">
-            <div className="h-2 w-full rounded-full bg-gray-200">
+      <div className="flex flex-col h-[600px]">
+        {/* Chat Messages Area */}
+        <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${
+                message.type === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
               <div
-                className="h-2 rounded-full bg-blue-600 transition-all duration-300 animate-pulse"
-                style={{ width: "100%" }}
-              />
+                className={`max-w-[80%] rounded-lg p-4 ${
+                  message.type === "user"
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-100 text-gray-900"
+                }`}
+              >
+                <pre className="whitespace-pre-wrap text-sm">
+                  {message.content}
+                </pre>
+              </div>
             </div>
-            <p className="text-sm text-center text-gray-500">{status}</p>
-          </div>
-        )}
-      </form>
-
-      {generatedProposal && (
-        <div className="mt-6">
-          <div className="prose max-w-none">
-            <pre className="whitespace-pre-wrap">
-              {generatedProposal.proposal}
-            </pre>
-          </div>
+          ))}
+          {isGenerating && (
+            <div className="flex justify-start">
+              <div className="bg-gray-100 rounded-lg p-4">
+                <div className="flex space-x-2">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Input Form */}
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-4 border-t pt-4"
+        >
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Job Description / Requirements
+            </label>
+            <Textarea
+              {...form.register("prompt", { required: true })}
+              placeholder="Type your message here..."
+              className="h-24 resize-none"
+            />
+          </div>
+
+          <div className="flex justify-between items-center">
+            <Select
+              onValueChange={(value) => {
+                form.setValue("model", value);
+              }}
+              defaultValue={form.getValues("model")}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select a model" />
+              </SelectTrigger>
+              <SelectContent>
+                {MODELS.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button type="submit" disabled={isGenerating}>
+              {isGenerating ? "Generating..." : "Send"}
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">OpenAI API Key</label>
+            <Input
+              type="password"
+              {...form.register("openaiApiKey", { required: true })}
+              placeholder="Enter your OpenAI API key"
+            />
+          </div>
+        </form>
+      </div>
     </Card>
   );
 }
