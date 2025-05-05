@@ -14,10 +14,6 @@ interface FormData {
   prompt: string;
 }
 
-interface GeneratedProposal {
-  proposal: string;
-}
-
 interface Message {
   type: "user" | "assistant";
   content: string;
@@ -25,10 +21,7 @@ interface Message {
 
 export function ProposalGeneratorForm() {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedProposal, setGeneratedProposal] =
-    useState<GeneratedProposal | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [status, setStatus] = useState<string>("");
   const dispatch = useDispatch();
   const formState = useSelector((state: RootState) => state.form);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -48,17 +41,20 @@ export function ProposalGeneratorForm() {
   });
 
   const onSubmit = async (data: FormData) => {
+    if (!formState.openaiApiKey) {
+      toast.error("Please set your OpenAI API key in Settings first");
+      return;
+    }
+
     try {
       dispatch(setFormData(data));
       setIsGenerating(true);
-      setStatus("Initializing proposal generation...");
 
       // Add user message to chat
       setMessages((prev) => [...prev, { type: "user", content: data.prompt }]);
 
       toast.info("Generating proposal...");
 
-      setStatus("Sending request to AI model...");
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: {
@@ -75,9 +71,7 @@ export function ProposalGeneratorForm() {
         throw new Error("Failed to generate proposal");
       }
 
-      setStatus("Processing response...");
       const result = await response.json();
-      setGeneratedProposal(result);
 
       // Add assistant message to chat
       setMessages((prev) => [
@@ -85,14 +79,12 @@ export function ProposalGeneratorForm() {
         { type: "assistant", content: result.proposal },
       ]);
 
-      setStatus("Proposal generated successfully!");
       toast.success("Proposal generated successfully!");
 
       // Clear the textarea after successful submission
       form.setValue("prompt", "");
     } catch (error) {
-      setStatus("Error generating proposal");
-      toast.error("Failed to generate proposal:");
+      toast.error("Failed to generate proposal");
       console.error(error);
     } finally {
       setIsGenerating(false);

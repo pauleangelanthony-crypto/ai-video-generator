@@ -21,6 +21,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { setFormData } from "@/lib/formSlice";
 import type { RootState } from "@/lib/store";
+import { useEffect } from "react";
 
 const MODELS = [
   { id: "gpt-4o-mini", name: "GPT-4o Mini" },
@@ -33,12 +34,24 @@ export function Header() {
   const dispatch = useDispatch();
   const formState = useSelector((state: RootState) => state.form);
 
+  // Load API key from localStorage on component mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem("openaiApiKey");
+    if (savedApiKey) {
+      dispatch(setFormData({ openaiApiKey: savedApiKey }));
+    }
+  }, [dispatch]);
+
   const handleModelChange = (value: string) => {
     dispatch(setFormData({ model: value }));
   };
 
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    dispatch(setFormData({ openaiApiKey: e.target.value }));
+    const newApiKey = e.target.value;
+    // Save to localStorage
+    localStorage.setItem("openaiApiKey", newApiKey);
+    // Update Redux store
+    dispatch(setFormData({ openaiApiKey: newApiKey }));
   };
 
   return (

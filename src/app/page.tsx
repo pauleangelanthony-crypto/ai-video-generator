@@ -1,4 +1,3 @@
-import { Header } from "@/components/Header";
 import { ProposalGeneratorForm } from "@/components/ProposalGeneratorForm";
 
 export default function Home() {
