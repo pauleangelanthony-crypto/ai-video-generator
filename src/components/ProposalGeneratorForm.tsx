@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -115,6 +115,15 @@ export function ProposalGeneratorForm() {
   const [status, setStatus] = useState<string>("");
   const dispatch = useDispatch();
   const formState = useSelector((state: RootState) => state.form) as FormData;
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -210,6 +219,7 @@ export function ProposalGeneratorForm() {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Form */}
