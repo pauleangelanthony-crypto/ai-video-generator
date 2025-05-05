@@ -133,21 +133,18 @@ export function ProposalGeneratorForm() {
         {/* Input Form */}
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-4 border-t pt-4"
+          className="flex-col gap-2 border-t pt-4"
         >
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Job Description / Requirements
-            </label>
+          <label className="text-sm font-medium">
+            Job Description / Requirements
+          </label>
+          <div className="flex gap-4 space-y-2">
             <Textarea
               {...form.register("prompt", { required: true })}
               placeholder="Type your message here..."
               className="h-24 resize-none"
             />
-          </div>
-
-          <div className="flex justify-end">
-            <Button type="submit" disabled={isGenerating}>
+            <Button type="submit" disabled={isGenerating} className="h-24">
               {isGenerating ? "Generating..." : "Send"}
             </Button>
           </div>
